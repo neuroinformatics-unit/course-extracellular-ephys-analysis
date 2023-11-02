@@ -10,7 +10,6 @@ data_path = base_path / r"rawdata" / "sub-001" / "ses-001" / "ephys"
 output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 
 # Loading Raw Data ---------------------------------------------------------------------
-git st
 raw_recording = si_extractors.read_spikeglx(data_path)
 
 # Preprocessing ------------------------------------------------------------------------
