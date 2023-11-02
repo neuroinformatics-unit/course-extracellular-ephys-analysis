@@ -5,7 +5,7 @@ import spikeinterface.sorters as si_sorters
 
 from pathlib import Path
 
-base_path = Path(r"C:\data\ephys\extracellular-ephys-analysis-2023\example_data")
+base_path = Path(r"/ceph/neuroinformatics/neuroinformatics/scratch/jziminski/extracellular-ephys-analysis-course-2023")
 data_path = base_path / r"rawdata" / "sub-001" / "ses-001" / "ephys"
 output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 
