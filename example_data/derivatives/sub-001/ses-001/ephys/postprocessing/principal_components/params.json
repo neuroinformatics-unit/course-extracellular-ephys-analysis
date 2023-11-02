@@ -1,0 +1,8 @@
+{
+    "n_components": 5,
+    "mode": "by_channel_local",
+    "whiten": true,
+    "dtype": "<f4",
+    "sparsity": null,
+    "tmp_folder": null
+}

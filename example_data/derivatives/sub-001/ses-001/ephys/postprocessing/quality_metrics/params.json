@@ -1,0 +1,91 @@
+{
+    "metric_names": [
+        "num_spikes",
+        "firing_rate",
+        "presence_ratio",
+        "snr",
+        "isi_violation",
+        "rp_violation",
+        "sliding_rp_violation",
+        "amplitude_cutoff",
+        "amplitude_median",
+        "isolation_distance",
+        "l_ratio",
+        "d_prime",
+        "nearest_neighbor",
+        "silhouette"
+    ],
+    "sparsity": null,
+    "peak_sign": null,
+    "seed": null,
+    "qm_params": {
+        "presence_ratio": {
+            "bin_duration_s": 60,
+            "mean_fr_ratio_thresh": 0.0
+        },
+        "snr": {
+            "peak_sign": "neg",
+            "peak_mode": "extremum",
+            "random_chunk_kwargs_dict": null
+        },
+        "isi_violation": {
+            "isi_threshold_ms": 1.5,
+            "min_isi_ms": 0
+        },
+        "rp_violation": {
+            "refractory_period_ms": 1.0,
+            "censored_period_ms": 0.0
+        },
+        "sliding_rp_violation": {
+            "min_spikes": 0,
+            "bin_size_ms": 0.25,
+            "window_size_s": 1,
+            "exclude_ref_period_below_ms": 0.5,
+            "max_ref_period_ms": 10,
+            "contamination_values": null
+        },
+        "amplitude_cutoff": {
+            "peak_sign": "neg",
+            "num_histogram_bins": 100,
+            "histogram_smoothing_value": 3,
+            "amplitudes_bins_min_ratio": 5
+        },
+        "amplitude_median": {
+            "peak_sign": "neg"
+        },
+        "drift": {
+            "interval_s": 60,
+            "min_spikes_per_interval": 100,
+            "direction": "y",
+            "min_num_bins": 2
+        },
+        "nearest_neighbor": {
+            "max_spikes": 10000,
+            "n_neighbors": 5
+        },
+        "nn_isolation": {
+            "max_spikes": 10000,
+            "min_spikes": 10,
+            "min_fr": 0.0,
+            "n_neighbors": 4,
+            "n_components": 10,
+            "radius_um": 100,
+            "peak_sign": "neg"
+        },
+        "nn_noise_overlap": {
+            "max_spikes": 10000,
+            "min_spikes": 10,
+            "min_fr": 0.0,
+            "n_neighbors": 4,
+            "n_components": 10,
+            "radius_um": 100,
+            "peak_sign": "neg"
+        },
+        "silhouette": {
+            "method": [
+                "simplified"
+            ]
+        }
+    },
+    "skip_pc_metrics": false
+}
