@@ -12,6 +12,7 @@ from my_first_project.pipeline_functions import (
     show_waveform_and_template,
     save_quality_metrics,
 )
+# TODO: update the facotred code, call the function prepro_for_mountainsort5.
 
 # Setup Options and Paths
 show_probe = False
