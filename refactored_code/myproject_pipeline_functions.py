@@ -6,21 +6,52 @@ import spikeinterface.sorters as si_sorters
 import spikeinterface.widgets as si_widgets
 import spikeinterface.curation as si_curation
 import spikeinterface.postprocessing as si_postprocess
-from spikeinterface import qualitymetrics
+from spikeinterface import extract_waveforms, qualitymetrics
 
+
+from pathlib import Path
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
-def display_the_probe(recording):
+def display_with_index(recording):
     """
+    Plot the probe associated with a recording.
+
+    Parameters
+    ----------
+
+    recording :
+        SpikeInterface recording object.
     """
     probe = recording.get_probe()
     pi_plot.plot_probe(probe, with_device_index=True)
     plt.show()
 
 
-def display_recording(recording, time_range):
+def preprocess_for_mountainsort5(raw_recording):
     """
+    <Requires documentation>
+    """
+    shifted_recording = si_prepro.phase_shift(raw_recording)
+
+    filtered_recording = si_prepro.bandpass_filter(
+        shifted_recording, freq_min=300, freq_max=6000
+    )
+
+    common_referenced_recording = si_prepro.common_reference(
+        filtered_recording, reference="global", operator="median"
+    )
+
+    preprocessed_recording = si_prepro.whiten(common_referenced_recording,
+                                              dtype='float32')
+
+    return preprocessed_recording
+
+
+def show_recording_heatmap(recording, time_range):
+    """
+    <Requires Documentation>
     """
     si_widgets.plot_timeseries(
         recording,
@@ -28,37 +59,26 @@ def display_recording(recording, time_range):
         time_range=time_range,
         return_scaled=True,
         show_channel_ids=True,
-        mode="map",  # "map", "line"
+        mode="map",
     )
     plt.show()
 
 
-def run_standard_preprocessing(raw_recording):
+def get_mountainsort5_sorting_object(output_path, preprocessed_recording):
     """
+    <Requires Documentation>
     """
-    shifted_recording = si_prepro.phase_shift(raw_recording)
+    sorting_output_path = output_path / "sorting"
 
-    filtered_recording = si_prepro.bandpass_filter(
-        shifted_recording, freq_min=300, freq_max=6000
-    )
-    preprocessed_recording = si_prepro.common_reference(
-        filtered_recording, reference="global", operator="median"
-    )
-
-    return preprocessed_recording
-
-
-def load_or_run_sorting(sorting_output_path, preprocessed_recording):
-    """
-    """
     if (sorting_output_path / "sorter_output").is_dir():
         sorting = si_extractors.NpzSortingExtractor(
-            (sorting_output_path / "sorter_output" / "firings.npz").as_posix())
+            (sorting_output_path / "sorter_output" / "firings.npz").as_posix()
+        )
     else:
         sorting = si_sorters.run_sorter(
-            "mountainsort5",
-            preprocessed_recording,
-            output_folder=sorting_output_path.as_posix(),
+           "mountainsort5",
+           preprocessed_recording,
+           output_folder=(output_path / "sorting").as_posix(),
         )
 
     sorting = sorting.remove_empty_units()
@@ -70,26 +90,14 @@ def load_or_run_sorting(sorting_output_path, preprocessed_recording):
     return sorting
 
 
-def show_waveform_and_template(waveforms, unit_id=2):
+def save_waveform_quality_metrics(output_path, waveforms):
     """
+    <Requires Documentation>
     """
-    unit_waveform_data = waveforms.get_waveforms(unit_id=unit_id)
+    quality_metrics_path = output_path / "quality_metrics.csv"
 
-    single_waveform_data = unit_waveform_data[0, :, :]
-    plt.plot(single_waveform_data)
-    plt.title("Data from a single waveform")
-    plt.show()
-
-    unit_template_data = waveforms.get_template(unit_id=unit_id)
-
-    plt.plot(unit_template_data)
-    plt.title(f"Template for unit: {unit_id}")
-    plt.show()
-
-
-def save_quality_metrics(waveforms, quality_metrics_path):
-    """
-    """
-    si_postprocess.compute_principal_components(waveforms, n_components=5, mode='by_channel_local')  # in place
+    si_postprocess.compute_principal_components(
+        waveforms, n_components=5, mode='by_channel_local'
+    )
     quality_metrics = qualitymetrics.compute_quality_metrics(waveforms)
     quality_metrics.to_csv(quality_metrics_path)

@@ -16,7 +16,7 @@ show_probe = True
 show_preprocessing = False
 show_waveform = False
 
-base_path = Path(r"C:\data\ephys\extracellular-ephys-analysis-2023\example_data")
+base_path = Path(r"C:\fMRIData\git-repo\extracellular-ephys-analysis-course-2023\example_data")
 data_path = base_path / r"rawdata" / "sub-001" / "ses-001" / "ephys"
 output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 
@@ -86,7 +86,6 @@ sorting = sorting.remove_empty_units()
 sorting = si_curation.remove_excess_spikes(
     sorting, preprocessed_recording
 )
-
 
 waveforms = extract_waveforms(
     preprocessed_recording,

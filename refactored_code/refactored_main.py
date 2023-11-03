@@ -1,46 +1,59 @@
+import probeinterface.plotting as pi_plot
 
 import spikeinterface.extractors as si_extractors
-from spikeinterface import extract_waveforms
+import spikeinterface.preprocessing as si_prepro
+import spikeinterface.sorters as si_sorters
+import spikeinterface.widgets as si_widgets
+import spikeinterface.curation as si_curation
+import spikeinterface.postprocessing as si_postprocess
+from spikeinterface import extract_waveforms, qualitymetrics
+
 
 from pathlib import Path
+import matplotlib.pyplot as plt
+import pandas as pd
 
-from my_first_project.pipeline_functions import (
-    display_the_probe,
-    display_recording,
-    run_standard_preprocessing,
-    load_or_run_sorting,
-    show_waveform_and_template,
-    save_quality_metrics,
+from myproject_pipeline_functions import (
+    display_with_index,
+    preprocess_for_mountainsort5,
+    show_recording_heatmap,
+    get_mountainsort5_sorting_object,
+    save_waveform_quality_metrics,
 )
-# TODO: update the facotred code, call the function prepro_for_mountainsort5.
 
-# Setup Options and Paths
-show_probe = False
+show_probe = True
 show_preprocessing = False
 show_waveform = False
 
-base_path = Path(r"C:\data\ephys\extracellular-ephys-analysis-2023\example_data")
+base_path = Path(r"C:\fMRIData\git-repo\extracellular-ephys-analysis-course-2023\example_data")
 data_path = base_path / r"rawdata" / "sub-001" / "ses-001" / "ephys"
 output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 
-# load Raw Data
+# Loading Raw Data ---------------------------------------------------------------------
+
+assert data_path.is_dir(), ("`data_path` does not exist! This should be a "
+                            "folder containing data.")
+
 raw_recording = si_extractors.read_spikeglx(data_path)
 
+assert raw_recording.get_sampling_frequency() == 30000, (f"Sampling frequency of the loaded file is not 30,000 Hz!" 
+                                                         f"It is {raw_recording.get_sampling_frequency()}")
 if show_probe:
-    display_the_probe(raw_recording)
+    display_with_index(raw_recording)
 
-# Preprocess Data
-preprocessed_recording = run_standard_preprocessing(raw_recording)
+# Preprocessing ------------------------------------------------------------------------
+
+preprocessed_recording = preprocess_for_mountainsort5(raw_recording)
 
 if show_preprocessing:
-    display_recording(preprocessed_recording, time_range=(1, 2))
+    show_recording_heatmap(recording, time_range=(1, 2))
 
-# Sorting
-sorting_output_path = output_path / "sorting"
+# Sorting ------------------------------------------------------------------------------
 
-sorting = load_or_run_sorting(sorting_output_path, preprocessed_recording)
+sorting = get_mountainsort5_sorting_object(output_path, preprocessed_recording)
 
-# Waveform Extraction
+# Waveforms and Quality Metrics --------------------------------------------------------
+
 waveforms = extract_waveforms(
     preprocessed_recording,
     sorting,
@@ -56,11 +69,4 @@ waveforms = extract_waveforms(
     sparse=True,
 )
 
-if show_waveform:
-    show_waveform_and_template(waveforms, unit_id=2)
-
-# Save Quality Metrics
-quality_metrics_path = output_path / "quality_metrics.csv"
-
-save_quality_metrics(waveforms, quality_metrics_path)
-
+save_waveform_quality_metrics(output_path, waveforms)
