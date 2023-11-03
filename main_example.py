@@ -10,7 +10,6 @@ from spikeinterface import extract_waveforms, qualitymetrics
 
 from pathlib import Path
 import matplotlib.pyplot as plt
-import pandas as pd
 
 show_probe = True
 show_preprocessing = False

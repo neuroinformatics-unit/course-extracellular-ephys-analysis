@@ -1,17 +1,9 @@
-import probeinterface.plotting as pi_plot
 
 import spikeinterface.extractors as si_extractors
-import spikeinterface.preprocessing as si_prepro
-import spikeinterface.sorters as si_sorters
-import spikeinterface.widgets as si_widgets
-import spikeinterface.curation as si_curation
-import spikeinterface.postprocessing as si_postprocess
-from spikeinterface import extract_waveforms, qualitymetrics
+from spikeinterface import extract_waveforms
 
 
 from pathlib import Path
-import matplotlib.pyplot as plt
-import pandas as pd
 
 from myproject_pipeline_functions import (
     display_with_index,

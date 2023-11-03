@@ -6,12 +6,10 @@ import spikeinterface.sorters as si_sorters
 import spikeinterface.widgets as si_widgets
 import spikeinterface.curation as si_curation
 import spikeinterface.postprocessing as si_postprocess
-from spikeinterface import extract_waveforms, qualitymetrics
+from spikeinterface import qualitymetrics
 
 
-from pathlib import Path
 import matplotlib.pyplot as plt
-import pandas as pd
 
 
 def display_with_index(recording):
