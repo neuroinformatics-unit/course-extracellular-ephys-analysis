@@ -25,7 +25,7 @@ raw_recording = si_extractors.read_spikeglx(data_path)
 
 if show_probe:
     probe = raw_recording.get_probe()
-    pi_plot.plot_probe(probe, with_device_index=True)
+    pi_plot.plot_probe(probe, with_contact_id=True)
     plt.show()
 
 

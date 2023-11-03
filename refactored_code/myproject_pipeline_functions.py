@@ -23,7 +23,7 @@ def display_with_index(recording):
         SpikeInterface recording object.
     """
     probe = recording.get_probe()
-    pi_plot.plot_probe(probe, with_device_index=True)
+    pi_plot.plot_probe(probe, with_contact_id=True)
     plt.show()
 
 
