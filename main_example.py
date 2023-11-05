@@ -28,14 +28,22 @@ if show_probe:
     pi_plot.plot_probe(probe, with_contact_id=True)
     plt.show()
 
-
-print(raw_recording)
+# Extra's to try
+# SpikeGLXRecordingExtractor: 384 channels - 30.0kHz - 1 segments - 90,000 samples - 3.00s
+#                             int16 dtype - 65.92 MiB
+# It is a SpikeGLXRecordingExtractor class
 
 print(dir(raw_recording))
+# dir() shows all class attributes and methods for the class
 
 print(raw_recording.get_sampling_frequency())
+# 30 kHz. This class method can be seen on the results from dir()
 
 example_data = raw_recording.get_traces(start_frame=0, end_frame=1000, return_scaled=True)
+# Returns the data, as a num_samples x num_channels array. We index from first (index 0) sample
+# 1000th (index 999, as the end_frame is upper-bound exclusive).
+# The `raw_recording` is lazy object that only loads data into memory when requested.
+
 
 print(example_data)
 
@@ -64,9 +72,28 @@ if show_preprocessing:
     )
     plt.show()
 
+# Preprocessing - Extra things to try
+# The data looks very similar when unscaled, as int16. This is because the range
+# and precision is not changed by scaling, only the scaling of the values, placing them
+# in more interpretable units. Just because we are using float rather than int16, because
+# the data is acquired as int16 we do not increse the resolution of the recording simply
+# by scaling.
 
-# TODO: manage existing projects
-# TODO: get this working on macos
+# We can save the data with
+# preprocessed_data_path = output_path / "preprocessed_data"
+# preprocessed_recording.save(folder=preprocessed_data_path)
+
+# Setting the bandpass filter minimum cutoff to zero would include freuqencies
+# in the range 0 - 6000 Hz.
+# Setting the bandpass filter maximum (having returned the minimum to 300) would include
+# 300 - 15000 Hz. 15000 Hz is chosen as it is the Nyquist frequency (half the sampling
+# rate of 30 kHz) that represents the largest detectable frequency in the recorded signal.
+
+# using preprocessed_recording.get_traces(start_frame=0, end_frame=1000, return_scaled=True)
+# (or False, 1000 samples are taken arbitarily) shows the int16 data as acquired (when False)
+# or the same data scaled to microvolts. You will see that if two datapoints are the same
+# value when int16, they are the same value as microvolts.
+
 sorting_output_path = output_path / "sorting"
 
 if (sorting_output_path / "sorter_output").is_dir():
@@ -85,6 +112,17 @@ sorting = sorting.remove_empty_units()
 sorting = si_curation.remove_excess_spikes(
     sorting, preprocessed_recording
 )
+
+# Sorting - Extra things to try
+# Use this function to get the times of all APs for a unit.
+spike_times = sorting.get_unit_spike_train(unit_id=2, return_times=True)
+
+# use the si_widgets.post_rasters functino as below to view the unit spikes
+# as a raster plot.
+si_widgets.plot_rasters(sorting, unit_ids=[2])
+plt.show()
+
+# The conditional statement is as above.
 
 waveforms = extract_waveforms(
     preprocessed_recording,
@@ -121,6 +159,42 @@ if show_waveform:
     plt.plot(unit_template_data)
     plt.title(f"Template for unit: {unit_to_show}")
     plt.show()
+
+# Extra things to try
+# Index out the most-negtive channel and plot
+unit_waveform_data = waveforms.get_waveforms(unit_id=2)
+
+import numpy as np
+# Lets index out the data from a single action potential.
+# `first_ap_data` is a num_samples x num_channels array
+first_ap_data = unit_waveform_data[0, :, :]
+
+# Let's just find the most-negative (i.e. the largest negative peak_ value
+# across all timepoints, all channels). This is over a 2D array, but np.argmin
+# flattens the array, and so the index of the value is this flattened array (it is
+# something like 700). We need to convert it back to a 2D index (index of the
+# timepoint, index of the channel). To do this, we use `unravel_index` function.
+largest_neg_idx = np.argmin(first_ap_data)
+largest_neg_idx = np.unravel_index(largest_neg_idx, first_ap_data.shape)
+
+# Now,  we index out the num_samples x num_channel array at the channel in which
+# the most negative value was found. `largest_neg_index` has two values,
+# the first is the timepoint where the minimum value was found, the second is the
+# channel where the minimum value was found.
+largest_neg_channel = first_ap_data[:, largest_neg_idx[1]]
+
+plt.plot(largest_neg_channel)
+plt.show()
+
+# Now, we want to plot a dot over the plot of the AP. The axis of the AP
+# plot are the voltage on the y-axis, and the sample index on the x-axis
+# The sample index is the timepoint of where the negative value was found,
+# as above. We can get the voltage by finding the minimum value of the AP.
+# Then, we can plot as a plt.scatter(<index of min value>, <min value>).
+peak_value = np.min(largest_neg_channel)
+plt.plot(largest_neg_channel)
+plt.scatter(largest_neg_idx[0], peak_value)
+plt.show()
 
 # Save Quality Metrics
 quality_metrics_path = output_path / "quality_metrics.csv"
