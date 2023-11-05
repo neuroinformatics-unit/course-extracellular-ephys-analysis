@@ -69,16 +69,16 @@ if show_preprocessing:
 # TODO: get this working on macos
 sorting_output_path = output_path / "sorting"
 
-#if (sorting_output_path / "sorter_output").is_dir():
-#    sorting = si_extractors.NpzSortingExtractor(
-#        (sorting_output_path / "sorter_output" / "firings.npz").as_posix()
-#    )
-#else:
-sorting = si_sorters.run_sorter(
-   "mountainsort5",
-   preprocessed_recording,
-   output_folder=output_path / "sorting",
-)
+if (sorting_output_path / "sorter_output").is_dir():
+    sorting = si_extractors.NpzSortingExtractor(
+        sorting_output_path / "sorter_output" / "firings.npz"
+    )
+else:
+    sorting = si_sorters.run_sorter(
+       "mountainsort5",
+       preprocessed_recording,
+       output_folder=output_path / "sorting",
+    )
 
 sorting = sorting.remove_empty_units()
 
@@ -89,7 +89,7 @@ sorting = si_curation.remove_excess_spikes(
 waveforms = extract_waveforms(
     preprocessed_recording,
     sorting,
-    folder=(output_path / "postprocessing").as_posix(),
+    folder=output_path / "postprocessing",
     overwrite=True,
     ms_before=2,
     ms_after=2,
