@@ -12,7 +12,7 @@ from spikeinterface import qualitymetrics
 import matplotlib.pyplot as plt
 
 
-def display_with_index(recording):
+def display_probe_with_index(recording):
     """
     Plot the probe associated with a recording.
 
@@ -41,9 +41,12 @@ def preprocess_for_mountainsort5(raw_recording):
         filtered_recording, reference="global", operator="median"
     )
 
-    preprocessed_recording = si_prepro.whiten(common_referenced_recording,
+    whitened_recording = si_prepro.whiten(common_referenced_recording,
                                               dtype='float32')
 
+    preprocessed_recording = si_prepro.correct_motion(
+        whitened_recording, preset="kilosort_like"
+    )
     return preprocessed_recording
 
 
@@ -51,13 +54,14 @@ def show_recording_heatmap(recording, time_range):
     """
     <Requires Documentation>
     """
-    si_widgets.plot_timeseries(
+    si_widgets.plot_traces(
         recording,
         order_channel_by_depth=True,
         time_range=time_range,
         return_scaled=True,
         show_channel_ids=True,
         mode="map",
+        clim=(-10, 10),
     )
     plt.show()
 
@@ -70,13 +74,16 @@ def get_mountainsort5_sorting_object(output_path, preprocessed_recording):
 
     if (sorting_output_path / "sorter_output").is_dir():
         sorting = si_extractors.NpzSortingExtractor(
-            (sorting_output_path / "sorter_output" / "firings.npz").as_posix()
+            sorting_output_path / "sorter_output" / "firings.npz"
         )
     else:
         sorting = si_sorters.run_sorter(
-           "mountainsort5",
-           preprocessed_recording,
-           output_folder=(output_path / "sorting").as_posix(),
+            "mountainsort5",
+            preprocessed_recording,
+            output_folder=sorting_output_path,
+            remove_existing_folder=True,
+            filter=False,
+            whiten=False,
         )
 
     sorting = sorting.remove_empty_units()

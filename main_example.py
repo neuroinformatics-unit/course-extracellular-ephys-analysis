@@ -6,17 +6,17 @@ import spikeinterface.sorters as si_sorters
 import spikeinterface.widgets as si_widgets
 import spikeinterface.curation as si_curation
 import spikeinterface.postprocessing as si_postprocess
-from spikeinterface import extract_waveforms, qualitymetrics
+from spikeinterface import extract_waveforms, qualitymetrics, load_waveforms
 
 from pathlib import Path
 import matplotlib.pyplot as plt
 
 show_probe = True
-show_preprocessing = False
-show_waveform = False
+show_preprocessing = True
+show_waveform = True
 
 base_path = Path(r"C:\fMRIData\git-repo\extracellular-ephys-analysis-course-2023\example_data")
-data_path = base_path / r"rawdata" / "sub-001" / "ses-001" / "ephys"
+data_path = base_path / "rawdata" / "sub-001" / "ses-001" / "ephys"
 output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 
 # Loading Raw Data ---------------------------------------------------------------------
@@ -28,7 +28,8 @@ if show_probe:
     pi_plot.plot_probe(probe, with_contact_id=True)
     plt.show()
 
-# Extra's to try
+# Extra things to try
+print(raw_recording)
 # SpikeGLXRecordingExtractor: 384 channels - 30.0kHz - 1 segments - 90,000 samples - 3.00s
 #                             int16 dtype - 65.92 MiB
 # It is a SpikeGLXRecordingExtractor class
@@ -44,7 +45,6 @@ example_data = raw_recording.get_traces(start_frame=0, end_frame=1000, return_sc
 # 1000th (index 999, as the end_frame is upper-bound exclusive).
 # The `raw_recording` is lazy object that only loads data into memory when requested.
 
-
 print(example_data)
 
 # Preprocessing ------------------------------------------------------------------------
@@ -54,25 +54,31 @@ shifted_recording = si_prepro.phase_shift(raw_recording)
 filtered_recording = si_prepro.bandpass_filter(
     shifted_recording, freq_min=300, freq_max=6000
 )
-
 common_referenced_recording = si_prepro.common_reference(
     filtered_recording, reference="global", operator="median"
 )
-
-preprocessed_recording = si_prepro.whiten(common_referenced_recording, dtype='float32')
+whitened_recording = si_prepro.whiten(
+    common_referenced_recording, dtype='float32'
+)
+preprocessed_recording = si_prepro.correct_motion(
+    whitened_recording, preset="kilosort_like"
+)  # see also 'nonrigid_accurate'
 
 if show_preprocessing:
-    si_widgets.plot_timeseries(
-        preprocessed_recording ,
+    si_widgets.plot_traces(
+        common_referenced_recording,
         order_channel_by_depth=True,
-        time_range=(1, 2),
+        time_range=(2, 3),
         return_scaled=True,
         show_channel_ids=True,
         mode="map",  # "map", "line"
+        clim=(-200, 200),  # after whitening, use (-10, 10) otherwise use (-200, 200)
     )
     plt.show()
 
 # Preprocessing - Extra things to try
+# Whitening completely changes the scaling of the data.
+
 # The data looks very similar when unscaled, as int16. This is because the range
 # and precision is not changed by scaling, only the scaling of the values, placing them
 # in more interpretable units. Just because we are using float rather than int16, because
@@ -104,7 +110,10 @@ else:
     sorting = si_sorters.run_sorter(
        "mountainsort5",
        preprocessed_recording,
-       output_folder=output_path / "sorting",
+       output_folder=sorting_output_path,
+       remove_existing_folder=True,
+       filter=False,
+       whiten=False,
     )
 
 sorting = sorting.remove_empty_units()
@@ -124,20 +133,25 @@ plt.show()
 
 # The conditional statement is as above.
 
-waveforms = extract_waveforms(
-    preprocessed_recording,
-    sorting,
-    folder=output_path / "postprocessing",
-    overwrite=True,
-    ms_before=2,
-    ms_after=2,
-    max_spikes_per_unit=500,
-    return_scaled=True,
-    # Sparsity Options
-    radius_um=75,
-    method="radius",
-    sparse=True,
-)
+waveforms_path = output_path / "postprocessing"
+
+if waveforms_path.is_dir():
+    waveforms = load_waveforms(waveforms_path)
+else:
+    waveforms = extract_waveforms(
+        preprocessed_recording,
+        sorting,
+        folder=waveforms_path,
+        overwrite=True,
+        ms_before=2,
+        ms_after=2,
+        max_spikes_per_unit=500,
+        return_scaled=True,
+        # Sparsity Options
+        radius_um=75,
+        method="radius",
+        sparse=True,
+    )
 
 if show_waveform:
     valid_unit_ids = waveforms.unit_ids

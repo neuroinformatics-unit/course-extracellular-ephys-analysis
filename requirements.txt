@@ -1,9 +1,10 @@
-spikeinterface==0.98.2
-probeinterface==0.2.18
+git+https://github.com/SpikeInterface/spikeinterface.git
+probeinterface==0.2.19
 neo==0.12.0
 matplotlib
 scipy
-mountainsort5==0.3.3
+mountainsort5==0.4.1
+isosplit6==0.1.4
 pandas
 numba
 numpy

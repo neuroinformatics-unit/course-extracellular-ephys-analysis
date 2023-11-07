@@ -6,7 +6,7 @@ from spikeinterface import extract_waveforms
 from pathlib import Path
 
 from myproject_pipeline_functions import (
-    display_with_index,
+    display_probe_with_index,
     preprocess_for_mountainsort5,
     show_recording_heatmap,
     get_mountainsort5_sorting_object,
@@ -31,7 +31,7 @@ raw_recording = si_extractors.read_spikeglx(data_path)
 assert raw_recording.get_sampling_frequency() == 30000, (f"Sampling frequency of the loaded file is not 30,000 Hz!" 
                                                          f"It is {raw_recording.get_sampling_frequency()}")
 if show_probe:
-    display_with_index(raw_recording)
+    display_probe_with_index(raw_recording)
 
 # Preprocessing ------------------------------------------------------------------------
 
