@@ -15,7 +15,7 @@ show_probe = True
 show_preprocessing = True
 show_waveform = True
 
-base_path = Path(r"C:\fMRIData\git-repo\extracellular-ephys-analysis-course-2023\example_data")
+base_path = Path(r"C:\Users\Joe\PycharmProjects\ephys-workshop-2023\extracellular-ephys-analysis-course-2023\example_data")
 data_path = base_path / "rawdata" / "sub-001" / "ses-001" / "ephys"
 output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 
@@ -45,7 +45,23 @@ example_data = raw_recording.get_traces(start_frame=0, end_frame=1000, return_sc
 # 1000th (index 999, as the end_frame is upper-bound exclusive).
 # The `raw_recording` is lazy object that only loads data into memory when requested.
 
-print(example_data)
+# Create and plot the Fourier Transform of a single channel
+import numpy as np
+sampling_frequency = 30000
+single_channgel_data = example_data[:, 0]
+num_samples = single_channgel_data.size
+freqs = np.fft.fftfreq(num_samples, d=1/sampling_frequency)
+signal_fft = np.fft.fft(single_channgel_data)
+magnitude_fft = np.abs(signal_fft)
+scale_magnitude_fft = magnitude_fft * 2 / single_channgel_data.size
+
+plt.plot(freqs, scale_magnitude_fft)
+plt.ylabel("Scaled Magnitude")
+plt.xlabel("Frequency (Hz)")
+plt.title("Demeaned Signal Frequency Spectrum")
+plt.show()
+
+
 
 # Preprocessing ------------------------------------------------------------------------
 
@@ -80,7 +96,7 @@ if show_preprocessing:
         return_scaled=True,
         show_channel_ids=True,
         mode="map",  # "map", "line"
-        clim=(-200, 200),  # after whitening, use (-10, 10) otherwise use (-200, 200)
+        clim=(-10, 10),  # after whitening, use (-10, 10) otherwise use (-200, 200)
     )
     plt.show()
 
@@ -107,6 +123,37 @@ if show_preprocessing:
 # (or False, 1000 samples are taken arbitarily) shows the int16 data as acquired (when False)
 # or the same data scaled to microvolts. You will see that if two datapoints are the same
 # value when int16, they are the same value as microvolts.
+
+example_prepro_data = preprocessed_recording.get_traces(0, 60000)
+single_channgel_data = example_prepro_data[:, 300]
+standard_dev = np.std(single_channgel_data)  # ideally we would measure this with spikes removed
+mean_ = np.mean(single_channgel_data)
+
+standard_dev_cutoff = mean_ - 3 * standard_dev
+spike_indicies = np.where(single_channgel_data < standard_dev_cutoff)
+# Using the std methods with adjustment is not good  but takes multiple points on single AP
+
+
+# Instead use scipy inbuilt function for the distance
+import scipy
+distance_between_peaks_in_samples = int(0.001 * sampling_frequency)  # spikes at least 1ms apart
+
+# However, scipy function is extremely annoying and does not have a simple threshold
+# cutoff, which we want for this example. By visualising we see that the threshold is
+# under-estimating the peaks because of the way prominenec works:
+# We can emulate this here by re-thresholding to 3x the std
+# Note, there are peak finding algorithms in other packages you can use for threshold
+# cutoffs, see https://stackoverflow.com/questions/1713335/peak-finding-algorithm-for-python-scipy
+# Also, in general there are better ways to find peaks, i.e. template matching
+spike_indicies = scipy.signal.find_peaks(single_channgel_data * -1,  # need to invert to find negative peaks
+                                         distance=distance_between_peaks_in_samples,
+                                         prominence=standard_dev_cutoff * -1)[0]  # we inverted so looking for 'positive
+
+spike_indicies = spike_indicies[single_channgel_data[spike_indicies] < standard_dev_cutoff]
+
+plt.plot(single_channgel_data)
+plt.scatter(spike_indicies, single_channgel_data[spike_indicies])
+plt.show()
 
 sorting_path = output_path / "sorting"
 
