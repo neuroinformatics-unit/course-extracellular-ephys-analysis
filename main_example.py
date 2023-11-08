@@ -15,7 +15,7 @@ show_probe = True
 show_preprocessing = True
 show_waveform = True
 
-base_path = Path(r"C:\fMRIData\git-repo\extracellular-ephys-analysis-course-2023\example_data")
+base_path = Path(r"/Users/joeziminski/PycharmProjects/extracellular-ephys-2-2023/extracellular-ephys-analysis-course-2023/example_data")
 data_path = base_path / "rawdata" / "sub-001" / "ses-001" / "ephys"
 output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 
@@ -100,17 +100,17 @@ if show_preprocessing:
 # or the same data scaled to microvolts. You will see that if two datapoints are the same
 # value when int16, they are the same value as microvolts.
 
-sorting_output_path = output_path / "sorting"
+sorting_path = output_path / "sorting"
 
-if (sorting_output_path / "sorter_output").is_dir():
+if (expected_filepath := sorting_path / "sorter_output" / "firings.npz").is_dir():
     sorting = si_extractors.NpzSortingExtractor(
-        sorting_output_path / "sorter_output" / "firings.npz"
+        expected_filepath
     )
 else:
     sorting = si_sorters.run_sorter(
        "mountainsort5",
        preprocessed_recording,
-       output_folder=sorting_output_path,
+       output_folder=sorting_path,
        remove_existing_folder=True,
        filter=False,
        whiten=False,
