@@ -6,7 +6,7 @@ import spikeinterface.sorters as si_sorters
 import spikeinterface.widgets as si_widgets
 import spikeinterface.curation as si_curation
 import spikeinterface.postprocessing as si_postprocess
-from spikeinterface import extract_waveforms, qualitymetrics, load_waveforms
+from spikeinterface import extract_waveforms, qualitymetrics, load_waveforms, load_extractor
 
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -15,7 +15,7 @@ show_probe = True
 show_preprocessing = True
 show_waveform = True
 
-base_path = Path(r"/Users/joeziminski/PycharmProjects/extracellular-ephys-2-2023/extracellular-ephys-analysis-course-2023/example_data")
+base_path = Path(r"C:\fMRIData\git-repo\extracellular-ephys-analysis-course-2023\example_data")
 data_path = base_path / "rawdata" / "sub-001" / "ses-001" / "ephys"
 output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 
@@ -49,24 +49,32 @@ print(example_data)
 
 # Preprocessing ------------------------------------------------------------------------
 
-shifted_recording = si_prepro.phase_shift(raw_recording)
+preprocessed_output_path = output_path / "preprocessed"
 
-filtered_recording = si_prepro.bandpass_filter(
-    shifted_recording, freq_min=300, freq_max=6000
-)
-common_referenced_recording = si_prepro.common_reference(
-    filtered_recording, reference="global", operator="median"
-)
-whitened_recording = si_prepro.whiten(
-    common_referenced_recording, dtype='float32'
-)
-preprocessed_recording = si_prepro.correct_motion(
-    whitened_recording, preset="kilosort_like"
-)  # see also 'nonrigid_accurate'
+if preprocessed_output_path.is_dir():
+    preprocessed_recording = load_extractor(preprocessed_output_path)
+else:
+    shifted_recording = si_prepro.phase_shift(raw_recording)
+
+    filtered_recording = si_prepro.bandpass_filter(
+        shifted_recording, freq_min=300, freq_max=6000
+    )
+    common_referenced_recording = si_prepro.common_reference(
+        filtered_recording, reference="global", operator="median"
+    )
+    whitened_recording = si_prepro.whiten(
+        common_referenced_recording, dtype='float32'
+    )
+    preprocessed_recording = si_prepro.correct_motion(
+        whitened_recording, preset="kilosort_like"
+    )  # see also 'nonrigid_accurate'
+
+    preprocessed_recording.save(folder=preprocessed_output_path)
+
 
 if show_preprocessing:
     si_widgets.plot_traces(
-        common_referenced_recording,
+        preprocessed_recording,
         order_channel_by_depth=True,
         time_range=(2, 3),
         return_scaled=True,
