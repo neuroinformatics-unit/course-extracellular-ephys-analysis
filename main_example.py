@@ -1,27 +1,28 @@
-import probeinterface.plotting as pi_plot
+import shutil
 
-import spikeinterface.extractors as si_extractors
-import spikeinterface.preprocessing as si_prepro
-import spikeinterface.sorters as si_sorters
-import spikeinterface.widgets as si_widgets
-import spikeinterface.curation as si_curation
-import spikeinterface.postprocessing as si_postprocess
-from spikeinterface import extract_waveforms, qualitymetrics, load_waveforms, load_extractor
+import probeinterface.plotting as pi_plot
+import spikeinterface.full as si
 
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-show_probe = True
-show_preprocessing = True
+show_probe = False
+show_preprocessing = False
 show_waveform = True
 
-base_path = Path(r"C:\Users\Joe\PycharmProjects\ephys-workshop-2023\extracellular-ephys-analysis-course-2023\example_data")
+load_existing_preprocessing = True
+load_existing_sorting = True
+load_existing_analyzer = False
+
+base_path = Path(r"/Users/joeziminski/PycharmProjects/ephys-course-2024-2/course-extracellular-ephys-analysis/example_data")
 data_path = base_path / "rawdata" / "sub-001" / "ses-001" / "ephys"
 output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 
-# Loading Raw Data ---------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Loading Raw Data
+# -------------------------------------------------------------------------------------
 
-raw_recording = si_extractors.read_spikeglx(data_path)
+raw_recording = si.read_spikeglx(data_path)
 
 if show_probe:
     probe = raw_recording.get_probe()
@@ -62,34 +63,37 @@ plt.title("Demeaned Signal Frequency Spectrum")
 plt.show()
 
 
-
-# Preprocessing ------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Preprocessing
+# -------------------------------------------------------------------------------------
 
 preprocessed_output_path = output_path / "preprocessed"
 
-if preprocessed_output_path.is_dir():
-    preprocessed_recording = load_extractor(preprocessed_output_path)
+if preprocessed_output_path.is_dir() and load_existing_preprocessing:
+    preprocessed_recording = si.load_extractor(preprocessed_output_path)
 else:
-    shifted_recording = si_prepro.phase_shift(raw_recording)
+    shifted_recording = si.phase_shift(raw_recording)
 
-    filtered_recording = si_prepro.bandpass_filter(
+    filtered_recording = si.bandpass_filter(
         shifted_recording, freq_min=300, freq_max=6000
     )
-    common_referenced_recording = si_prepro.common_reference(
+    common_referenced_recording = si.common_reference(
         filtered_recording, reference="global", operator="median"
     )
-    whitened_recording = si_prepro.whiten(
-        common_referenced_recording, dtype='float32'
+    common_referenced_recording = si.astype(common_referenced_recording, np.float32)
+
+    whitened_recording = si.whiten(
+        common_referenced_recording,
     )
-    preprocessed_recording = si_prepro.correct_motion(
+    preprocessed_recording = si.correct_motion(
         whitened_recording, preset="kilosort_like"
     )  # see also 'nonrigid_accurate'
 
-    preprocessed_recording.save(folder=preprocessed_output_path)
+    preprocessed_recording.save(folder=preprocessed_output_path, overwrite=True)
 
 
 if show_preprocessing:
-    si_widgets.plot_traces(
+    si.plot_traces(
         preprocessed_recording,
         order_channel_by_depth=True,
         time_range=(2, 3),
@@ -100,7 +104,10 @@ if show_preprocessing:
     )
     plt.show()
 
-# Preprocessing - Extra things to try
+# -------------------------------------------------------------------------------------
+# Extra things to try - preprocessing
+# -------------------------------------------------------------------------------------
+
 # Whitening completely changes the scaling of the data.
 
 # The data looks very similar when unscaled, as int16. This is because the range
@@ -133,7 +140,6 @@ standard_dev_cutoff = mean_ - 3 * standard_dev
 spike_indicies = np.where(single_channgel_data < standard_dev_cutoff)
 # Using the std methods with adjustment is not good  but takes multiple points on single AP
 
-
 # Instead use scipy inbuilt function for the distance
 import scipy
 distance_between_peaks_in_samples = int(0.001 * sampling_frequency)  # spikes at least 1ms apart
@@ -155,14 +161,18 @@ plt.plot(single_channgel_data)
 plt.scatter(spike_indicies, single_channgel_data[spike_indicies])
 plt.show()
 
+# -------------------------------------------------------------------------------------
+# Sorting
+# -------------------------------------------------------------------------------------
+
 sorting_path = output_path / "sorting"
 
-if (expected_filepath := sorting_path / "sorter_output" / "firings.npz").is_dir():
-    sorting = si_extractors.NpzSortingExtractor(
+if (expected_filepath := sorting_path / "sorter_output" / "firings.npz").is_file() and load_existing_sorting:
+    sorting = si.NpzSortingExtractor(
         expected_filepath
     )
 else:
-    sorting = si_sorters.run_sorter(
+    sorting = si.run_sorter(
        "mountainsort5",
        preprocessed_recording,
        output_folder=sorting_path,
@@ -173,7 +183,7 @@ else:
 
 sorting = sorting.remove_empty_units()
 
-sorting = si_curation.remove_excess_spikes(
+sorting = si.remove_excess_spikes(
     sorting, preprocessed_recording
 )
 
@@ -181,37 +191,110 @@ sorting = si_curation.remove_excess_spikes(
 # Use this function to get the times of all APs for a unit.
 spike_times = sorting.get_unit_spike_train(unit_id=2, return_times=True)
 
-# use the si_widgets.post_rasters functino as below to view the unit spikes
+# use the si.post_rasters functino as below to view the unit spikes
 # as a raster plot.
-si_widgets.plot_rasters(sorting, unit_ids=[2])
+si.plot_rasters(sorting, unit_ids=[2])
 plt.show()
 
 # The conditional statement is as above.
 
-waveforms_path = output_path / "postprocessing"
+import spikeinterface.full as si
 
-if waveforms_path.is_dir():
-    waveforms = load_waveforms(waveforms_path)
+# -------------------------------------------------------------------------------------
+# Postprocessing - Sorting Analyzer
+# -------------------------------------------------------------------------------------
+
+# TODO: save sorting analyzer
+# API docs for sorting analyzer.
+#         ms_before: float = 1.0, ms_after: float = 2.0, operators = None
+#         import inspect; inspect.signature(self._set_params)
+# also no API docs for the returned classes
+
+sorting_analyzer_path = output_path / "analyzer"
+quality_metrics_path = output_path / "quality_metrics.csv"
+
+if sorting_analyzer_path.is_dir() and load_existing_analyzer:
+    analyzer = si.load_sorting_analyzer(sorting_analyzer_path)
 else:
-    waveforms = extract_waveforms(
-        preprocessed_recording,
-        sorting,
-        folder=waveforms_path,
-        overwrite=True,
-        ms_before=2,
-        ms_after=2,
-        max_spikes_per_unit=500,
-        return_scaled=True,
-        # Sparsity Options
+    analyzer = si.create_sorting_analyzer(
+        sorting=sorting,
+        recording=preprocessed_recording,
         radius_um=75,
         method="radius",
         sparse=True,
     )
+    analyzer.compute(
+        "random_spikes",
+        method='uniform',
+        max_spikes_per_unit=500,
+        seed=None
+    )
+    analyzer.compute(
+        "waveforms",
+         ms_before=2,
+         ms_after=2,
+     )
+    analyzer.compute(
+        "templates",
+        ms_before=2,
+        ms_after=2,
+        operators=["average"]
+    )
+    analyzer.compute(
+        "spike_amplitudes",
+        peak_sign="neg",
+    )
+    analyzer.compute(
+        "noise_levels",
+        num_chunks_per_segment=20,
+        chunk_size=10000,
+        seed=None
+    )
+    analyzer.compute(
+        "principal_components",
+        n_components=5,
+        mode='by_channel_local',
+        whiten=True,
+        dtype='float32'
+    )
+    analyzer.compute(
+        "quality_metrics",
+        peak_sign="neg",
+        metric_names=None,
+        qm_params=None,
+        seed=None,
+        skip_pc_metrics=False,
+        delete_existing_metrics=False,
+        metrics_to_compute=None
+    )
+
+    if sorting_analyzer_path.is_dir():
+        shutil.rmtree(sorting_analyzer_path)
+
+    analyzer.save_as(format="binary_folder", folder=sorting_analyzer_path)
+
+    quality_metrics_table = analyzer.get_extension("quality_metrics").get_data()
+
+    quality_metrics_table.to_csv(quality_metrics_path)
+
+
+# -------------------------------------------------------------------------------------
+# Plot Waveforms
+# -------------------------------------------------------------------------------------
+
+waveforms_path = output_path / "postprocessing"
+
+valid_unit_ids = analyzer.unit_ids
+unit_to_show = valid_unit_ids[0]
+
+waveforms = analyzer.get_extension("waveforms")
+unit_waveform_data = waveforms.get_data()
+
+
+templates = analyzer.get_extension("templates")
+unit_template_data = templates.get_unit_template(unit_id=unit_to_show)
 
 if show_waveform:
-    valid_unit_ids = waveforms.unit_ids
-    unit_to_show = valid_unit_ids[0]
-    unit_waveform_data = waveforms.get_waveforms(unit_id=unit_to_show)
 
     print(f"The shape of the waveform data is "
           f"num_waveforms x num_samples x num_channels: {unit_waveform_data.shape}")
@@ -221,7 +304,13 @@ if show_waveform:
     plt.title("Data from a single waveform")
     plt.show()
 
-    unit_template_data = waveforms.get_template(unit_id=unit_to_show)
+    # With spikeinterface plotting function
+    si.plot_unit_waveforms(analyzer, unit_ids=[unit_to_show])
+    plt.show()
+
+    templates = analyzer.get_extension("templates")
+    unit_template_data = templates.get_unit_template(unit_id=unit_to_show)
+
     print(f"The template is averaged over all waveforms. The shape"
           f"of the template data is num_samples x num_channels: {unit_template_data.shape}")
 
@@ -229,9 +318,15 @@ if show_waveform:
     plt.title(f"Template for unit: {unit_to_show}")
     plt.show()
 
+    si.plot_unit_templates(analyzer, unit_ids=[unit_to_show])
+    plt.show()
+
+# -------------------------------------------------------------------------------------
 # Extra things to try
+# -------------------------------------------------------------------------------------
+
 # Index out the most-negtive channel and plot
-unit_waveform_data = waveforms.get_waveforms(unit_id=2)
+unit_waveform_data = waveforms.get_waveforms_one_unit(unit_id=2)  # analyzer.get_waveforms(unit_id=2)
 
 import numpy as np
 # Lets index out the data from a single action potential.
@@ -265,11 +360,16 @@ plt.plot(largest_neg_channel)
 plt.scatter(largest_neg_idx[0], peak_value)
 plt.show()
 
-# Save Quality Metrics
-quality_metrics_path = output_path / "quality_metrics.csv"
 
-si_postprocess.compute_principal_components(
-    waveforms, n_components=5, mode='by_channel_local'
-)
-quality_metrics = qualitymetrics.compute_quality_metrics(waveforms)
-quality_metrics.to_csv(quality_metrics_path)
+# Finally, we can add offsets to the waveforms for plotting purposes, to see
+# how the signal loads across channels. In practice, we would use SpikeInterface's
+# own `plot_traces()` for this.
+
+num_channels = unit_template_data.shape[1]
+offset = 0.2
+
+channel_offsets = np.linspace(0, offset * num_channels, num_channels)[np.newaxis, :]
+offset_template_data = unit_template_data + channel_offsets
+
+plt.plot(offset_template_data)
+plt.show()

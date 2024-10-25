@@ -5,7 +5,7 @@ import spikeinterface.sorters as si_sorters
 
 from pathlib import Path
 
-base_path = Path(r"/ceph/neuroinformatics/neuroinformatics/scratch/jziminski/extracellular-ephys-analysis-course-2023/example_data")
+base_path = Path(r"/Users/joeziminski/PycharmProjects/ephys-course-2024-2/course-extracellular-ephys-analysis/example_data")
 data_path = base_path / r"rawdata" / "sub-001" / "ses-001" / "ephys"
 output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 
@@ -22,13 +22,14 @@ print("Running preprocessing")
 
 shifted_recording = si_prepro.phase_shift(raw_recording)
 
-filtered_recording = si_prepro.bandpass_filter(
-    shifted_recording, freq_min=300, freq_max=6000
-)
+if False:
+    filtered_recording = si_prepro.bandpass_filter(
+        shifted_recording, freq_min=300, freq_max=6000
+    )
 
-preprocessed_recording = si_prepro.common_reference(
-    filtered_recording, reference="global", operator="median"
-)
+    preprocessed_recording = si_prepro.common_reference(
+        filtered_recording, reference="global", operator="median"
+    )
 
 # Sorting ------------------------------------------------------------------------------
 # We do common median referencing in SpikeInterface, and skip Common Average Reference
@@ -40,10 +41,9 @@ print("Starting sorting")
 sorting_output_path = output_path / "sorting"
 
 sorting = si_sorters.run_sorter(
-   "kilosort2_5",
-   preprocessed_recording,
-   output_folder=(output_path / "sorting").as_posix(),
-   singularity_image=True,
-   car=False,
-   freq_min=300,
+   "kilosort4",
+   shifted_recording,
+    remove_existing_folder=True
+#   do_CAR=False,
+#  freq_min=300,
 )
