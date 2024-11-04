@@ -1,4 +1,4 @@
-spikeinterface
+git+https://github.com/SpikeInterface/spikeinterface.git
 probeinterface
 neo
 matplotlib
