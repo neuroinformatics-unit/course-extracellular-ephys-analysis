@@ -1,4 +1,4 @@
-# extracellular-ephys-analysis-course-2023
+# extracellular-ephys-analysis-course-2024
 Covering how to build electrophysiology pipelines with SpikeInterface
 
 This repository contains:
