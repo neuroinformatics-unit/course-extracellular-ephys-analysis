@@ -1,20 +1,20 @@
-import shutil
-
 import probeinterface.plotting as pi_plot
 import spikeinterface.full as si
 
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-show_probe = False
-show_preprocessing = False
+import shutil
+
+show_probe = True
+show_preprocessing = True
 show_waveform = True
 
 load_existing_preprocessing = True
 load_existing_sorting = True
 load_existing_analyzer = False
 
-base_path = Path(r"/Users/joeziminski/PycharmProjects/ephys-course-2024-2/course-extracellular-ephys-analysis/example_data")
+base_path = Path(r"C:\Users\Joe\PycharmProjects\course2024\course-extracellular-ephys-analysis\example_data")
 data_path = base_path / "rawdata" / "sub-001" / "ses-001" / "ephys"
 output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 
@@ -25,9 +25,10 @@ output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 raw_recording = si.read_spikeglx(data_path)
 
 if show_probe:
-    probe = raw_recording.get_probe()
-    pi_plot.plot_probe(probe, with_contact_id=True)
-    plt.show()
+   probe = raw_recording.get_probe()
+   pi_plot.plot_probe(probe, with_contact_id=True)
+   plt.show()
+
 
 # Extra things to try
 print(raw_recording)
@@ -80,10 +81,8 @@ else:
     common_referenced_recording = si.common_reference(
         filtered_recording, reference="global", operator="median"
     )
-    common_referenced_recording = si.astype(common_referenced_recording, np.float32)
-
     whitened_recording = si.whiten(
-        common_referenced_recording,
+        common_referenced_recording, dtype="float32",
     )
     preprocessed_recording = si.correct_motion(
         whitened_recording, preset="kilosort_like"
@@ -103,6 +102,7 @@ if show_preprocessing:
         clim=(-10, 10),  # after whitening, use (-10, 10) otherwise use (-200, 200)
     )
     plt.show()
+
 
 # -------------------------------------------------------------------------------------
 # Extra things to try - preprocessing
@@ -138,7 +138,7 @@ mean_ = np.mean(single_channgel_data)
 
 standard_dev_cutoff = mean_ - 3 * standard_dev
 spike_indicies = np.where(single_channgel_data < standard_dev_cutoff)
-# Using the std methods with adjustment is not good  but takes multiple points on single AP
+# Using the std methods with adjustment is not good as takes multiple points on single AP
 
 # Instead use scipy inbuilt function for the distance
 import scipy
@@ -175,7 +175,7 @@ else:
     sorting = si.run_sorter(
        "mountainsort5",
        preprocessed_recording,
-       output_folder=sorting_path,
+       folder=sorting_path,
        remove_existing_folder=True,
        filter=False,
        whiten=False,
@@ -187,7 +187,11 @@ sorting = si.remove_excess_spikes(
     sorting, preprocessed_recording
 )
 
+si.get_default_sorter_params(sorter_name_or_class="mountainsort5")
+
 # Sorting - Extra things to try
+# -----------------------------
+
 # Use this function to get the times of all APs for a unit.
 spike_times = sorting.get_unit_spike_train(unit_id=2, return_times=True)
 
@@ -197,18 +201,12 @@ si.plot_rasters(sorting, unit_ids=[2])
 plt.show()
 
 # The conditional statement is as above.
-
-import spikeinterface.full as si
+# To sort with kilosort4, change "mountainsort5" to "kilosort4" above
+# (and ensure you have kilosort installed).
 
 # -------------------------------------------------------------------------------------
 # Postprocessing - Sorting Analyzer
 # -------------------------------------------------------------------------------------
-
-# TODO: save sorting analyzer
-# API docs for sorting analyzer.
-#         ms_before: float = 1.0, ms_after: float = 2.0, operators = None
-#         import inspect; inspect.signature(self._set_params)
-# also no API docs for the returned classes
 
 sorting_analyzer_path = output_path / "analyzer"
 quality_metrics_path = output_path / "quality_metrics.csv"
@@ -253,19 +251,13 @@ else:
     analyzer.compute(
         "principal_components",
         n_components=5,
-        mode='by_channel_local',
-        whiten=True,
-        dtype='float32'
     )
     analyzer.compute(
         "quality_metrics",
         peak_sign="neg",
-        metric_names=None,
-        qm_params=None,
         seed=None,
         skip_pc_metrics=False,
         delete_existing_metrics=False,
-        metrics_to_compute=None
     )
 
     if sorting_analyzer_path.is_dir():
@@ -282,30 +274,26 @@ else:
 # Plot Waveforms
 # -------------------------------------------------------------------------------------
 
-waveforms_path = output_path / "postprocessing"
-
 valid_unit_ids = analyzer.unit_ids
 unit_to_show = valid_unit_ids[0]
 
 waveforms = analyzer.get_extension("waveforms")
-unit_waveform_data = waveforms.get_data()
 
+unit_waveform_data = waveforms.get_waveforms_one_unit(
+    unit_id=unit_to_show
+)
 
-templates = analyzer.get_extension("templates")
-unit_template_data = templates.get_unit_template(unit_id=unit_to_show)
+print(f"The shape of the waveform data is "
+     f"num_waveforms x num_samples x num_channels: {unit_waveform_data.shape}"
+)
+
+single_waveform_data = unit_waveform_data[0, :, :]
 
 if show_waveform:
-
-    print(f"The shape of the waveform data is "
-          f"num_waveforms x num_samples x num_channels: {unit_waveform_data.shape}")
 
     single_waveform_data = unit_waveform_data[0, :, :]
     plt.plot(single_waveform_data)
     plt.title("Data from a single waveform")
-    plt.show()
-
-    # With spikeinterface plotting function
-    si.plot_unit_waveforms(analyzer, unit_ids=[unit_to_show])
     plt.show()
 
     templates = analyzer.get_extension("templates")
@@ -313,6 +301,9 @@ if show_waveform:
 
     print(f"The template is averaged over all waveforms. The shape"
           f"of the template data is num_samples x num_channels: {unit_template_data.shape}")
+
+    si.plot_unit_waveforms_density_map(analyzer, unit_ids=[unit_to_show])
+    plt.show()
 
     plt.plot(unit_template_data)
     plt.title(f"Template for unit: {unit_to_show}")
@@ -372,4 +363,10 @@ channel_offsets = np.linspace(0, offset * num_channels, num_channels)[np.newaxis
 offset_template_data = unit_template_data + channel_offsets
 
 plt.plot(offset_template_data)
+plt.show()
+
+# Templates extra things to try: make a custom template
+template_waveform = np.mean(unit_waveform_data, axis=0)
+
+plt.plot(template_waveform + channel_offsets[:, template_waveform.shape[1]])
 plt.show()
