@@ -14,7 +14,7 @@ load_existing_preprocessing = True
 load_existing_sorting = True
 load_existing_analyzer = False
 
-base_path = Path(r"C:\Users\Joe\PycharmProjects\course2024\course-extracellular-ephys-analysis\example_data")
+base_path = Path(__file__).parent / "example_data"
 data_path = base_path / "rawdata" / "sub-001" / "ses-001" / "ephys"
 output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 
@@ -22,7 +22,7 @@ output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 # Loading Raw Data
 # -------------------------------------------------------------------------------------
 
-raw_recording = si.read_spikeglx(data_path)
+raw_recording = si.read_spikeglx(data_path, stream_id="imec0.ap")
 
 if show_probe:
    probe = raw_recording.get_probe()
@@ -42,7 +42,7 @@ print(dir(raw_recording))
 print(raw_recording.get_sampling_frequency())
 # 30 kHz. This class method can be seen on the results from dir()
 
-example_data = raw_recording.get_traces(start_frame=0, end_frame=1000, return_scaled=True)
+example_data = raw_recording.get_traces(start_frame=0, end_frame=1000, return_in_uV=True)
 # Returns the data, as a num_samples x num_channels array. We index from first (index 0) sample
 # 1000th (index 999, as the end_frame is upper-bound exclusive).
 # The `raw_recording` is lazy object that only loads data into memory when requested.
@@ -90,12 +90,13 @@ else:
 
     preprocessed_recording.save(folder=preprocessed_output_path, overwrite=True)
 
+start_time = preprocessed_recording.get_times()[0]
 
 if show_preprocessing:
     si.plot_traces(
         preprocessed_recording,
         order_channel_by_depth=True,
-        time_range=(2, 3),
+        time_range=(start_time + 2, start_time + 3),
         return_scaled=True,
         show_channel_ids=True,
         mode="map",  # "map", "line"

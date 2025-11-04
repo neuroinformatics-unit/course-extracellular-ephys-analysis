@@ -1,4 +1,4 @@
-git+https://github.com/SpikeInterface/spikeinterface.git
+spikeinterface
 probeinterface
 neo
 matplotlib
@@ -8,3 +8,4 @@ isosplit6
 pandas
 numba
 numpy
+kilosort

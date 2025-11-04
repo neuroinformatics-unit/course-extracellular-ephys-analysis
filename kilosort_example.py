@@ -1,8 +1,11 @@
-
+"""
+This is an example script for running kilosort2.5 on the HPC.
+It requires a GPU node, and expects singularity is installed.
+"""
 import spikeinterface.full as si
 from pathlib import Path
 
-base_path = Path(r"/Users/joeziminski/PycharmProjects/ephys-course-2024-2/course-extracellular-ephys-analysis/example_data")
+base_path = Path(__file__).parent / "example_data"
 data_path = base_path / r"rawdata" / "sub-001" / "ses-001" / "ephys"
 output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 
@@ -10,7 +13,7 @@ output_path = base_path / "derivatives" / "sub-001" / "ses-001" / "ephys"
 
 print("Loading data)")
 
-raw_recording = si.read_spikeglx(data_path)
+raw_recording = si.read_spikeglx(data_path, stream_id="imec0.ap")
 
 # Preprocessing ------------------------------------------------------------------------
 # We skip the whitening step, because it is performed in Kilosort
